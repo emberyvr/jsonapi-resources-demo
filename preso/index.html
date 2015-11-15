@@ -14,6 +14,8 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
 
+    <link rel="shortcut icon" href="img/favicon.png" />
+
     <link rel="stylesheet" href="css/reveal.css">
     <link rel="stylesheet" href="css/theme/ember.css">
 
@@ -57,16 +59,185 @@
             </p>
           </small>
           <aside class="notes">
-            <p>Hello, I'm Ben and today I'm gonna talk about Ember CLI's content-for helper and the related ember-cli-inline-content helper.</p>
           </aside>
         </section>
 
         <section>
-          <h2>Section Name</h2>
+          <h1>1.12 -> 1.13 -> 2.x</h1>
+
           <aside class="notes">
-            <p>Notes</p>
+            <p>When Ember 1.13 was released, the biggest change was a total overhaul of Ember Data's internal format and the Serializer API to follow the JSON API specification. The JSON API specification (seen [here](http://jsonapi.org/)) has been in the works for a few years, and recently 1.0 specification was released.</p>
+
+            <p>Ember's core team designed this change to operatate *mostly* transparently; in general, you didn't have to do much to update to Ember 1.13 unless you were doing some super custom serialization. </p>
           </aside>
         </section>
+
+        <section>
+          <h3>Old &amp; Busted</h3>
+<pre><code data-trim contenteditable>
+{
+  "article": {
+      "id": 1,
+      "title": "JSON API with Ember Data 2.1",
+      "author_id": 1
+  },
+  "authors": [
+    {
+      "id": 1,
+      "name": "Ben Borowski"
+    }
+  ]
+}
+</code></pre>
+        </section>
+
+        <section>
+          <h3>New Hotness</h3>
+<pre><code data-trim contenteditable>
+{
+  "data": {
+    "type": "articles",
+    "id": 1,
+    "attributes": {
+      "title": "JSON API with Ember Data 2.1"
+    },
+    "relationships": {
+      "author": {
+        "data": { "id": 1, "type": "authors" }
+      }
+    }
+  },
+  "included": [
+    {
+      "id": 1,
+      "type": "authors",
+      "attributes": { "name": "Ben Borowski" }
+    }
+  ]
+}
+</code></pre>
+          <aside class="notes">
+            <p>You can see here that the "type" and "id" of the object is stored as a separate key on "data", instead of containing all the "attributes" under the object type key. Certainly a bit more complex, but not too different.</p>
+
+            <p>Now then, if you've been using *active_model_serializers* up until now, how do you get your data in a similar format with Rails?</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2>Option A</h2>
+          <p><img src="img/ams.png" alt="AMS on Github"></p>
+<pre><code data-trim contenteditable>
+ActiveModel::Serializer.config.adapter = :json_api
+</code></pre>
+          <aside class="notes">
+            <p>You could continue to use active model serializers gem.</p>
+            <p>You'll need to change your adapter to use the JsonApi adapter.</p>
+            <p>You'll need to use the Ember Active Model Adapter.</p>
+            <p>Good news: this is the recommended adapter so it seems like it'll be good to use.</p>
+            <p>Bad news: I've tried working with it and it's pretty far from complete. Competition.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2>Option B</h2>
+          <p><img src="img/jsonapi.png" alt="jsonapi-resources on github"></p>
+          <ul>
+            <li>Provides resources out of the box with very little code</li>
+            <li>Maintained by Ember core team members/folks who are writing the JSON API spec</li>
+          </ul>
+          <aside class="notes">
+            <p>Highly recommended for new projects</p>
+            <ul>
+              <li>Provides resources out of the box with very little code</li>
+              <li>Maintained by core team members and folks who are writing the JSON API spec</li>
+            </ul>
+          </aside>
+        </section>
+
+        <section>
+          <h2>Initial Rails setup</h2>
+<pre><code data-trim contenteditable>
+$ rails generate model Author name:string
+$ rails generate model Article title:string body:text author:references
+</code></pre>
+
+<pre><code data-trim contenteditable>
+gem 'jsonapi-resources', '~> 0.6.1'
+</code></pre>
+          <aside class="notes">
+            <p>We'll assume we've already got a Rails application created and we'll start with a simple blog app, with articles and authors.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2>Resources</h2>
+<pre><code data-trim contenteditable>
+$ rails generate jsonapi:resource author
+$ rails generate jsonapi:resource article
+</code></pre>
+
+<pre><code data-trim contenteditable>
+class AuthorResource < JSONAPI::Resource
+  attribute :name
+end
+
+class ArticleResource < JSONAPI::Resource
+  attributes :title, :body
+  has_one :author
+end
+</code></pre>
+          <aside class="notes">
+
+          </aside>
+        </section>
+
+        <section>
+          <h2>Routing to Resources</h2>
+<pre><code data-trim contenteditable>
+Rails.application.routes.draw do
+  jsonapi_resources :articles # <---- NOTE: not "resources" helper
+  jsonapi_resources :authors
+end
+</code></pre>
+          <aside class="notes">
+
+          </aside>
+        </section>
+
+        <section>
+          <h2>Controllers</h2>
+<pre><code data-trim contenteditable>
+# app/controllers/articles_controller.rb
+class ArticlesController < JSONAPI::ResourceController
+end
+
+# app/controllers/authors_controller.rb
+class AuthorsController < JSONAPI::ResourceController
+end
+</code></pre>
+          <aside class="notes">
+            <p>ACTION: show API output in browser at this point</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2>Other (Unexplored) Options</h2>
+          <ul>
+            <li>Need just serialization? <a href="https://github.com/fotinakis/jsonapi-serializers" target="_blank">jsonapi-serializers</a></li>
+            <li>DIY with <a href="https://github.com/rails/jbuilder" target="_blank">Jbuilder</a> or <a href="https://github.com/nesquena/rabl" target="_blank">RABL</a></li>
+          </ul>
+        </section>
+
+<!--
+        <section>
+          <h3>Title</h3>
+<pre><code data-trim contenteditable>
+
+</code></pre>
+          <aside class="notes">
+          </aside>
+        </section>
+-->
 
         <section>
           <h2>That's it, thanks, Ember.YVR!</h2>
