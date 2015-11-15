@@ -221,6 +221,29 @@ end
         </section>
 
         <section>
+          <h2>Context</h2>
+<pre><code data-trim contenteditable>
+class ApplicationController < JSONAPI::ResourceController
+  def context
+    { current_user: current_user }
+  end
+end
+
+class UsersController < ApplicationController
+  attributes :name, :email
+
+  def fetchable_fields
+    if context[:current_user].guest
+      super - [:email]
+    else
+      super
+    end
+  end
+end
+</code></pre>
+        </section>
+
+        <section>
           <h2>Other (Unexplored) Options</h2>
           <ul>
             <li>Need just serialization? <a href="https://github.com/fotinakis/jsonapi-serializers" target="_blank">jsonapi-serializers</a></li>
