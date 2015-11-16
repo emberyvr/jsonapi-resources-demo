@@ -46,7 +46,7 @@ A JSON API compliant output will look more like the following:
 
 You can see here that the "type" and "id" of the object is stored as a separate key on "data", instead of containing all the "attributes" under the object type key. Certainly a bit more complex, but not too different. Now then, if you've been using *active_model_serializers* up until now, how do you get your data in a similar format with Rails?
 
-At the moment, there are two decent options. You *could* use the master branch of *active_model_serializers* and set your adapter to the JsonApi adapter:
+At the moment, there are two decent options. You *could* use the master branch of *active_model_serializers* and set your adapter to the `JsonApi` adapter:
 
     ActiveModel::Serializer.config.adapter = :json_api
 
@@ -80,7 +80,7 @@ to install the Faker gem. Finally, let's add some data in *db/seeds.rb*:
 
     author = Author.create(name: Faker::Name.name)
     5.times do
-      Article.create(title: Faker::Book.title, body: Faker::Lorem.paragraphs, author: author)
+      Article.create(title: Faker::Book.title, body: Faker::Lorem.paragraphs.join("\n\n"), author: author)
     end
 
 To get the data into the database, run the seeder:
@@ -156,7 +156,7 @@ Note here that we're using `jsonapi_resources` and not the standard Rails `resou
                                  DELETE    /authors/:id(.:format)                               authors#destroy
 
 
-Wow, so it's set up an entire RESTful routing sytem to do all the things we'd want to do with our articles and authors. So how do we handle these actions? We've ever got some routes for fetching relationships on each of our models. Next we'll add some controllers to handle the requests:
+Wow, so it's set up an entire RESTful routing sytem to do all the things we'd want to do with our articles and authors. We've even got some routes for fetching relationships on each of our models. So how do we handle these actions? Next we'll add some controllers to handle the requests:
     
     # app/controllers/articles_controller.rb
     class ArticlesController < JSONAPI::ResourceController
@@ -174,7 +174,7 @@ How about a single article? http://localhost:3000/articles/1.
 
 !["Articles JSON output"](preso/img/json2.png)
 
-Okay, wow, it looks like our API is pretty much "done!" We can even post to this same endpoint to create an author:
+Okay, wow, it looks like our API is pretty much "done!" We can even post to the collection endpoints to create resources:
 
     $ curl -i -H "Accept: application/vnd.api+json" -H 'Content-Type:application/vnd.api+json' -X POST -d '{"data": {"type":"authors", "attributes":{"name":"Fake Kname"}}}' http://localhost:3000/authors
 
@@ -292,4 +292,65 @@ Paginating on the Ember side gets a bit more complex. You'll need to use extract
 
 Using this method, you could then drop in the ember-cli-pagination addon to get frontend pagination for free. 
 
-Another article will probably be appropriate down the road. 
+Another article focused on pagination will probably be appropriate down the road. 
+
+## Editing
+
+Let's see how editing a resource with jsonapi-resources works. Add a new route to Ember:
+
+    $ ember generate route article/edit
+
+Change the route path in *app/router.js*:
+
+    this.route('article', function() {
+      this.route('edit', { path: ':id/edit' });
+    });
+
+And edit the route in *app/routes/article/edit.js*:
+
+    import Ember from 'ember';
+
+    export default Ember.Route.extend({
+      model(params) {
+        return this.store.findRecord('article', params.id);
+      },
+      actions: {
+        savePost() {
+          let model = this.get('controller.model');
+          model.save().then(() => {
+            console.info('saved!');
+          });
+        }
+      }
+    });
+
+Finally, let's create a super quick form to edit the data in *app/templates/article/edit.hbs*:
+
+    <p>
+      {{input value=model.title}}
+    </p>
+    <p>
+      {{textarea value=model.body}}
+    </p>
+    
+    <button {{action "savePost"}}>Save</button>
+
+Clicking the button will pass up the `savePost` action to route and Ember Data will fire off a PATCH request to Rails which updates the model. You can inspect this request in the console. Preview this new route at [http://localhost:4200/articles/1/edit](http://localhost:4200/articles/1/edit).
+
+We can also update the articles index template to add links to our new edit page:
+
+    {{#link-to "article.edit" article}}
+      {{article.title}} by <em>{{article.author.name}}</em>
+    {{/link-to}}
+
+and redirect us back to the index when we've saved a post:
+
+    // in routes/article/edit.js
+    model.save().then(() => {
+      console.info('saved!');
+      this.transitionTo('articles');
+    });
+
+## Wrap-up
+
+Obviously this is a very simple example, but shows how to setup jsonapi-resources to start using the latest Ember recommended spec. You can find the [source code for this application](https://github.com/emberyvr/jsonapi-resources-demo) on github as part of the demo talk I gave at a [Ember.YVR](http://meetup.com/Vancouver-Ember-js/) meetup.
