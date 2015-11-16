@@ -63,7 +63,7 @@
         </section>
 
         <section>
-          <h1>1.12 -> 1.13 -> 2.x</h1>
+          <h1>1.12 -> (1.13 -> 2.x)</h1>
 
           <aside class="notes">
             <p>When Ember 1.13 was released, the biggest change was a total overhaul of Ember Data's internal format and the Serializer API to follow the JSON API specification. The JSON API specification (seen [here](http://jsonapi.org/)) has been in the works for a few years, and recently 1.0 specification was released.</p>
@@ -89,6 +89,9 @@
   ]
 }
 </code></pre>
+          <aside class="notes">
+            <p>Most of us are outputting json like this, as active model serializers 0.8 and 0.9 expect.</p>
+          </aside>
         </section>
 
         <section>
@@ -205,6 +208,10 @@ end
         </section>
 
         <section>
+          <img src="img/routes.png" alt="routes">
+        </section>
+
+        <section>
           <h2>Controllers</h2>
 <pre><code data-trim contenteditable>
 # app/controllers/articles_controller.rb
@@ -238,6 +245,51 @@ class UsersController < ApplicationController
     else
       super
     end
+  end
+end
+</code></pre>
+        </section>
+
+        <section>
+          <h2>Pagination</h2>
+
+          <p>Use a <code>JSONAPI::Paginator</code> "adapter"</p>
+
+          <aside class="notes">
+            <p>Pagination data is handled by adding a JSONAPI Paginator adapter.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2>Configure</h2>
+<pre><code data-trim contenteditable>
+# config/initializers/jsonapi_resources.rb
+JSONAPI.configure do |config|
+  # built in paginators are :none, :offset, :paged
+  config.default_paginator = :paged
+
+  config.default_page_size = 2
+  config.maximum_page_size = 20
+end
+</code></pre>
+
+<p>
+<a href="http://localhost:3000/articles?page=2" target="_blank">http://localhost:3000/articles?page=2</a>
+</p>
+        </section>
+
+        <section>
+          <h2>Custom Paginators</h2>
+          <p>Implement the <code>apply</code> method.</p>
+<pre><code data-trim contenteditable>
+class SingleRecordPaginator < JSONAPI::Paginator
+  def initialize(params)
+    # param parsing and validation here
+    @page = params.to_i
+  end
+
+  def apply(relation, order_options)
+    relation.offset(@page).limit(1)
   end
 end
 </code></pre>
