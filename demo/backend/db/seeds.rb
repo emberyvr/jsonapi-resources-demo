@@ -9,5 +9,5 @@
 author = Author.create(name: Faker::Name.name)
 
 5.times do
-  Article.create(title: Faker::Book.title, body: Faker::Lorem.paragraphs, author: author)
+  Article.create(title: Faker::Book.title, body: Faker::Lorem.paragraphs.join("\n\n"), author: author)
 end
