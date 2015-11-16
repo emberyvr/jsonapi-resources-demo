@@ -12,6 +12,7 @@ export default Ember.Route.extend({
       let model = this.get('controller.model');
       model.save().then(() => {
         console.info('saved!');
+        this.transitionTo('articles');
       });
     }
 

@@ -1,5 +1,7 @@
 {{#each articles as |article|}}
   <p>
-    {{article.title}} by <em>{{article.author.name}}</em>
+    {{#link-to "article.edit" article}}
+      {{article.title}} by <em>{{article.author.name}}</em>
+    {{/link-to}}
   </p>
 {{/each}}
