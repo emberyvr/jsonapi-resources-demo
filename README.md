@@ -237,7 +237,7 @@ If bower asks you to select a version, choose the one that persists the 2.1.0 ve
 
 !["Resolving Ember"](preso/img/resolving.png)
 
-Great, now you're running Ember 2.0 when you run `ember serve`.
+Great, now you're running Ember 2.1 when you run `ember serve`.
 
 ### Models
 
@@ -334,7 +334,7 @@ The URL params for pagination are not well documentated at this point. You can e
 
 ### Ember pagination is hard.
 
-Paginating on the Ember side gets a bit more complex. You'll need to use extracted meta data from the JSON response to tell which page you're on. jsonapi-resources [doesn't handle meta](https://github.com/cerebris/jsonapi-resources/issues/89) out of the box quite yet, but there are [solutions that involve manual serializtion](https://github.com/cerebris/jsonapi-resources/issues/89#issuecomment-101740062) that seem reasonable. 
+Paginating on the Ember side gets a bit more complex. You'll need to use extracted meta data from the JSON response to tell which page you're on. jsonapi-resources [doesn't handle meta](https://github.com/cerebris/jsonapi-resources/issues/89) out of the box quite yet, but there are [solutions that involve manual serialization](https://github.com/cerebris/jsonapi-resources/issues/89#issuecomment-101740062) that seem reasonable. 
 
 Using this method, you could then drop in the ember-cli-pagination addon to get frontend pagination for free. 
 
@@ -361,7 +361,7 @@ import Ember from 'ember';
 
 export default Ember.Route.extend({
   model(params) {
-    return this.store.findRecord('article', params.id);
+    return this.store.findRecord('article', params.id, { reload: true });
   },
   actions: {
     savePost() {
