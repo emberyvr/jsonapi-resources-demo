@@ -6,49 +6,55 @@ Ember's core team designed this change to operatate *mostly* transparently; in g
 
 With previous versions of Ember, if you were using Rails, you were probably using the [active_model_serializers](https://github.com/rails-api/active_model_serializers) gem and the output probably looked something like this:
 
+```json
+{
+  "article": {
+      "id": 1,
+      "title": "JSON API with Ember Data 2.1",
+      "author_id": 1
+  },
+  "authors": [
     {
-      "article": {
-          "id": 1,
-          "title": "JSON API with Ember Data 2.1",
-          "author_id": 1
-      },
-      "authors": [
-        {
-          "id": 1,
-          "name": "Ben Borowski"
-        }
-      ]
+      "id": 1,
+      "name": "Ben Borowski"
     }
+  ]
+}
+```
 
 A JSON API compliant output will look more like the following:
 
-    {
-      "data": {
-        "type": "article",
-        "id": 1,
-        "attributes": {
-          "title": "JSON API with Ember Data 2.1"
-        },
-        "relationships": {
-          "author": {
-            "data": { "id": 1, "type": "author" }
-          }
-        }
-      },
-      "included": [
-        {
-          "id": 1,
-          "type": "authors",
-          "attributes": { "name": "Ben Borowski" }
-        }
-      ]
+```json
+{
+  "data": {
+    "type": "article",
+    "id": 1,
+    "attributes": {
+      "title": "JSON API with Ember Data 2.1"
+    },
+    "relationships": {
+      "author": {
+        "data": { "id": 1, "type": "author" }
+      }
     }
+  },
+  "included": [
+    {
+      "id": 1,
+      "type": "authors",
+      "attributes": { "name": "Ben Borowski" }
+    }
+  ]
+}
+```
 
 You can see here that the "type" and "id" of the object is stored as a separate key on "data", instead of containing all the "attributes" under the object type key. Certainly a bit more complex, but not too different. Now then, if you've been using *active_model_serializers* up until now, how do you get your data in a similar format with Rails?
 
 At the moment, there are two decent options. You *could* use the master branch of *active_model_serializers* and set your adapter to the `JsonApi` adapter:
 
-    ActiveModel::Serializer.config.adapter = :json_api
+```ruby
+ActiveModel::Serializer.config.adapter = :json_api
+```
 
 If you're starting with a new project though, I'd defintely recommend you jump straight to using the [jsonapi-resources](https://github.com/cerebris/jsonapi-resources) gem. It's a bit more "spec-complete" at the moment, plus it's written by some of the same folks that are working on the JSON API specification (mostly [Dan Gebhardt](https://twitter.com/dgeb), from the looks of it).
 
@@ -78,10 +84,12 @@ and
 
 to install the Faker gem. Finally, let's add some data in *db/seeds.rb*:
 
-    author = Author.create(name: Faker::Name.name)
-    5.times do
-      Article.create(title: Faker::Book.title, body: Faker::Lorem.paragraphs.join("\n\n"), author: author)
-    end
+```ruby
+author = Author.create(name: Faker::Name.name)
+5.times do
+  Article.create(title: Faker::Book.title, body: Faker::Lorem.paragraphs.join("\n\n"), author: author)
+end
+```
 
 To get the data into the database, run the seeder:
 
@@ -113,14 +121,18 @@ The most basic component of jsonapi-resources is the `Resource`. These define th
 
 This will generate two resource files in the default location (in *app/resources*). Edit those to define the attributes you want to include on the resource and define the relationships:
 
-    class AuthorResource < JSONAPI::Resource
-      attribute :name
-    end
+```ruby
+# app/resources/author_resource.rb
+class AuthorResource < JSONAPI::Resource
+  attribute :name
+end
 
-    class ArticleResource < JSONAPI::Resource
-      attributes :title, :body
-      has_one :author
-    end
+# app/resources/article_resource.rb
+class ArticleResource < JSONAPI::Resource
+  attributes :title, :body
+  has_one :author
+end
+```
 
 You'll note this looks pretty familiar if you've already been using *active_model_serializers*.
 
@@ -128,10 +140,12 @@ You'll note this looks pretty familiar if you've already been using *active_mode
 
 The gem provides some very powerful features to set up an API without much code. First let's use the routing API and update *config/routes.rb*:
 
-    Rails.application.routes.draw do
-      jsonapi_resources :articles
-      jsonapi_resources :authors
-    end
+```ruby
+Rails.application.routes.draw do
+  jsonapi_resources :articles
+  jsonapi_resources :authors
+end
+```
 
 Note here that we're using `jsonapi_resources` and not the standard Rails `resources` route helper. Now we can expect the routes it's created from the command line:
 
@@ -157,14 +171,16 @@ Note here that we're using `jsonapi_resources` and not the standard Rails `resou
 
 
 Wow, so it's set up an entire RESTful routing sytem to do all the things we'd want to do with our articles and authors. We've even got some routes for fetching relationships on each of our models. So how do we handle these actions? Next we'll add some controllers to handle the requests:
-    
-    # app/controllers/articles_controller.rb
-    class ArticlesController < JSONAPI::ResourceController
-    end
 
-    # app/controllers/authors_controller.rb
-    class AuthorsController < JSONAPI::ResourceController
-    end
+```ruby
+# app/controllers/articles_controller.rb
+class ArticlesController < JSONAPI::ResourceController
+end
+
+# app/controllers/authors_controller.rb
+class AuthorsController < JSONAPI::ResourceController
+end
+```
 
 Start up rails if you haven't yet and navigate to http://localhost:3000/articles.
 
@@ -181,6 +197,26 @@ Okay, wow, it looks like our API is pretty much "done!" We can even post to the 
 You can add `?include=author` to the URL to side load the author data as well `http://localhost:3000/articles/1?include=author`:
 
 !["Articles JSON output"](preso/img/json3.png)
+
+### Serializers
+
+If you need to do operations in your actions that are more complex, you can implement the action yourself. You can use JSONAPI's `ResourceSerializer` to serialize your resource to a jsonapi-compliant object:
+
+```ruby
+def show
+  # model
+  article = Article.find(params[:id])
+
+  # resource for model
+  resource = ArticleResource.new(article, nil)
+
+  # serializer for resource
+  serializer = JSONAPI::ResourceSerializer.new(ArticleResource)
+
+  # jsonapi-compliant hash (ready to be send to render)
+  render json: serializer.serialize_to_hash(resource)
+end
+```
 
 There's lots more you can do to restrict access to resources, filter the data, etc., so I recommend you read the [primary README file on GitHub](https://github.com/cerebris/jsonapi-resources/blob/master/README.md) as it's loaded with great info. We've got a basic API to do CRUD operations with Ember, though, so let's create our Ember app.
 
@@ -218,22 +254,26 @@ First let's generate a view to display a list of articles in:
 
 Edit the generated route in *app/routes/articles.js*:
 
-    import Ember from 'ember';
+```js
+import Ember from 'ember';
 
-    export default Ember.Route.extend({
-      model() {
-        return this.store.findAll('article');
-      }
-    });
+export default Ember.Route.extend({
+  model() {
+    return this.store.findAll('article');
+  }
+});
+```    
 
 
 and then open up *app/templates/articles.hbs* and add a list of articles based on the model we're fetching:
 
-    {{#each model as |article|}}
-      <p>
-        {{article.title}} by <em>{{article.author.name}}</em>
-      </p>
-    {{/each}}
+```hbs
+{{#each model as |article|}}
+  <p>
+    {{article.title}} by <em>{{article.author.name}}</em>
+  </p>
+{{/each}}
+```
 
 Finally, let's start the Ember server up and proxy all requests to the Rails application (which should be running too):
 
@@ -249,7 +289,9 @@ You may find that the author names do not display, if so, check your console out
 
 We'll add the [rack-cors](https://github.com/cyu/rack-cors) gem to handle the CORS configuration for us:
 
-    gem 'rack-cors', require: 'rack/cors'
+```ruby
+gem 'rack-cors', require: 'rack/cors'
+```
 
 Install the gem:
 
@@ -257,13 +299,15 @@ Install the gem:
 
 Add the following snippet to your *config/application.rb*:
 
-    config.middleware.insert_before 0, "Rack::Cors", :debug => true, :logger => (-> { Rails.logger }) do
-      allow do
-        origins '*'
-        resource '/cors', :headers => :any, :methods => [:post], :credentials => true, :max_age => 0
-        resource '*', :headers => :any, :methods => [:get, :post, :delete, :put, :patch, :options, :head], :max_age => 0
-      end
-    end
+```ruby
+config.middleware.insert_before 0, "Rack::Cors", :debug => true, :logger => (-> { Rails.logger }) do
+  allow do
+    origins '*'
+    resource '/cors', :headers => :any, :methods => [:post], :credentials => true, :max_age => 0
+    resource '*', :headers => :any, :methods => [:get, :post, :delete, :put, :patch, :options, :head], :max_age => 0
+  end
+end
+```
 
 Great, now start up the Rails server again and head back to your Ember app. The articles should be loading the author now as well. There may be some other warnings in the console that you'll have to resolve for a production app, but for our demo, we can safely ignore those for now.
 
@@ -273,14 +317,16 @@ Great, now start up the Rails server again and head back to your Ember app. The 
 
 jsonapi-resources makes paginating data a snap. No additional gems required. We can add an initializer to configure pagination like so (the default is `:none` pagination):
 
-    # config/initializers/jsonapi_resources.rb
-    JSONAPI.configure do |config|
-      # built in paginators are :none, :offset, :paged
-      config.default_paginator = :paged
+```ruby
+# config/initializers/jsonapi_resources.rb
+JSONAPI.configure do |config|
+  # built in paginators are :none, :offset, :paged
+  config.default_paginator = :paged
 
-      config.default_page_size = 2
-      config.maximum_page_size = 20
-    end
+  config.default_page_size = 2
+  config.maximum_page_size = 20
+end
+```
 
 Restart Rails and navigate to <a href="http://localhost:3000/articles">http://localhost:3000/articles</a> and you'll only see 2 items instead of 5. Add <a href="http://localhost:3000/articles?page=2">?page=2</a> to the URL to see the next set of articles.
 
@@ -302,54 +348,64 @@ Let's see how editing a resource with jsonapi-resources works. Add a new route t
 
 Change the route path in *app/router.js*:
 
-    this.route('article', function() {
-      this.route('edit', { path: ':id/edit' });
-    });
+```js
+this.route('article', function() {
+  this.route('edit', { path: ':id/edit' });
+});
+```
 
 And edit the route in *app/routes/article/edit.js*:
 
-    import Ember from 'ember';
+```js
+import Ember from 'ember';
 
-    export default Ember.Route.extend({
-      model(params) {
-        return this.store.findRecord('article', params.id);
-      },
-      actions: {
-        savePost() {
-          let model = this.get('controller.model');
-          model.save().then(() => {
-            console.info('saved!');
-          });
-        }
-      }
-    });
+export default Ember.Route.extend({
+  model(params) {
+    return this.store.findRecord('article', params.id);
+  },
+  actions: {
+    savePost() {
+      let model = this.get('controller.model');
+      model.save().then(() => {
+        console.info('saved!');
+      });
+    }
+  }
+});
+```
 
 Finally, let's create a super quick form to edit the data in *app/templates/article/edit.hbs*:
 
-    <p>
-      {{input value=model.title}}
-    </p>
-    <p>
-      {{textarea value=model.body}}
-    </p>
-    
-    <button {{action "savePost"}}>Save</button>
+```hbs
+<p>
+  {{input value=model.title}}
+</p>
+<p>
+  {{textarea value=model.body}}
+</p>
+
+<button {{action "savePost"}}>Save</button>
+```
 
 Clicking the button will pass up the `savePost` action to route and Ember Data will fire off a PATCH request to Rails which updates the model. You can inspect this request in the console. Preview this new route at [http://localhost:4200/articles/1/edit](http://localhost:4200/articles/1/edit).
 
 We can also update the articles index template to add links to our new edit page:
 
-    {{#link-to "article.edit" article}}
-      {{article.title}} by <em>{{article.author.name}}</em>
-    {{/link-to}}
+```hbs
+{{#link-to "article.edit" article}}
+  {{article.title}} by <em>{{article.author.name}}</em>
+{{/link-to}}
+```
 
 and redirect us back to the index when we've saved a post:
 
-    // in routes/article/edit.js
-    model.save().then(() => {
-      console.info('saved!');
-      this.transitionTo('articles');
-    });
+```js
+// in routes/article/edit.js
+model.save().then(() => {
+  console.info('saved!');
+  this.transitionTo('articles');
+});
+```
 
 ## Wrap-up
 

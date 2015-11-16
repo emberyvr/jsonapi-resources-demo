@@ -65,6 +65,12 @@
         <section>
           <h1>1.12 -> (1.13 -> 2.x)</h1>
 
+          <ul>
+            <li>Biggest change: JSON API specification</li>
+            <li>See: <a href="http://jsonapi.org" target="_blank">http://jsonapi.org</a> for spec</li>
+            <li>1.13 to 2.x: no changes, just deprecations</li>
+          </ul>
+
           <aside class="notes">
             <p>When Ember 1.13 was released, the biggest change was a total overhaul of Ember Data's internal format and the Serializer API to follow the JSON API specification. The JSON API specification (seen [here](http://jsonapi.org/)) has been in the works for a few years, and recently 1.0 specification was released.</p>
 
@@ -180,17 +186,43 @@ $ rails generate jsonapi:resource article
 </code></pre>
 
 <pre><code data-trim contenteditable>
+# app/resources/author_resource.rb
 class AuthorResource < JSONAPI::Resource
   attribute :name
 end
 
+# app/resources/article_resource.rb
 class ArticleResource < JSONAPI::Resource
   attributes :title, :body
   has_one :author
 end
 </code></pre>
           <aside class="notes">
+            <ul>
+              <li>define public interface to your API</li>
+              <li>created in app/resources by default</li>
+              <li>similar in scope to active model serializer</li>
+            </ul>
+          </aside>
+        </section>
 
+        <section>
+          <h2>Serializing</h2>
+          <p>Serialize to compliant JSON API with <code>ResourceSerializer</code>.</p>
+<pre><code data-trim contenteditable>
+# model
+article = Article.first
+
+# resource for model
+resource = ArticleResource.new(article, nil)
+
+# serializer for resource
+serializer = JSONAPI::ResourceSerializer.new(ArticleResource)
+
+# jsonapi-compliant hash (ready to be send to render)
+serializer.serialize_to_hash(resource)
+</code></pre>
+          <aside class="notes">
           </aside>
         </section>
 
