@@ -48,11 +48,11 @@ You can see here that the "type" and "id" of the object is stored as a separate 
 
 At the moment, there are two decent options. You *could* use the master branch of *active_model_serializers* and set your adapter to the JsonApi adapter:
 
-    ActiveModel::Serializer.config.adapter = ActiveModel::Serializer::Adapter::JsonApi
+    ActiveModel::Serializer.config.adapter = :json_api
 
-If you're starting with a new project though, I'd defintely recommend you jump straight to using the [jsonapi-resources](https://github.com/cerebris/jsonapi-resources) gem. It's a bit more "spec-complete" at the moment, plus it's written by some of the same folks that are working on the JSON API specification (mostly Dan Gebhardt, from the looks of it).
+If you're starting with a new project though, I'd defintely recommend you jump straight to using the [jsonapi-resources](https://github.com/cerebris/jsonapi-resources) gem. It's a bit more "spec-complete" at the moment, plus it's written by some of the same folks that are working on the JSON API specification (mostly [Dan Gebhardt](https://twitter.com/dgeb), from the looks of it).
 
-## Rails Setup
+## Rails
 
 Let's start with a new Rails application:
 
@@ -68,7 +68,7 @@ Finally, let's migrate our database:
 
     $ bundle exec rake db:migrate
 
-I'll also add some seed data to *db/seeds.rb* to get us started. I'm going to use the Faker gem to add some test data, so add to your *Gemfile*:
+I'll also add some seed data to *db/seeds.rb* to get us started. I'm going to use the [Faker](https://github.com/stympy/faker) gem to add some test data, so add to your *Gemfile*:
 
     gem 'faker', '~> 1.5.0'
 
@@ -96,7 +96,7 @@ Let's see what we got via the console:
 
 Fantastic! We've got our simple data structure, a database, and some seed data. Now let's make a JSON API-compliant API!
 
-## jsonapi-resources
+### Enter jsonapi-resources
 
 We'll get started on the API by adding the jsonapi-resources gem. Add the following to your Gemfile:
 
@@ -122,9 +122,9 @@ This will generate two resource files in the default location (in *app/resources
       has_one :author
     end
 
-You'll note this looks pretty familiar if you've already been using active_model_serializers.
+You'll note this looks pretty familiar if you've already been using *active_model_serializers*.
 
-Routing to resources
+### Routing to resources
 
 The gem provides some very powerful features to set up an API without much code. First let's use the routing API and update *config/routes.rb*:
 
@@ -133,7 +133,7 @@ The gem provides some very powerful features to set up an API without much code.
       jsonapi_resources :authors
     end
 
-Now we can expect the routes it's created from the command line:
+Note here that we're using `jsonapi_resources` and not the standard Rails `resources` route helper. Now we can expect the routes it's created from the command line:
 
     $ rake routes
 
@@ -156,7 +156,7 @@ Now we can expect the routes it's created from the command line:
                                  DELETE    /authors/:id(.:format)                               authors#destroy
 
 
-Wow, so it's set up an entire RESTful routing sytem to do all the things we'd want to do with our articles and authors. So how do we handle these actions? Next we'll add some controllers to handle them:
+Wow, so it's set up an entire RESTful routing sytem to do all the things we'd want to do with our articles and authors. So how do we handle these actions? We've ever got some routes for fetching relationships on each of our models. Next we'll add some controllers to handle the requests:
     
     # app/controllers/articles_controller.rb
     class ArticlesController < JSONAPI::ResourceController
@@ -168,21 +168,21 @@ Wow, so it's set up an entire RESTful routing sytem to do all the things we'd wa
 
 Start up rails if you haven't yet and navigate to http://localhost:3000/articles.
 
-    TODO: IMAGE OF OUTPUT
+!["Articles JSON output"](preso/img/json1.png)
 
 How about a single article? http://localhost:3000/articles/1.
 
-    TODO: IMAGE OF OUTPUT
+!["Articles JSON output"](preso/img/json2.png)
 
-Okay, wow, it looks like our API is pretty much "done!" We can even post to this same endpoint to create an article:
+Okay, wow, it looks like our API is pretty much "done!" We can even post to this same endpoint to create an author:
 
     $ curl -i -H "Accept: application/vnd.api+json" -H 'Content-Type:application/vnd.api+json' -X POST -d '{"data": {"type":"authors", "attributes":{"name":"Fake Kname"}}}' http://localhost:3000/authors
 
-You can add ?include=author to the URL to side load the author data as well http://localhost:3000/articles/1?include=author:
+You can add `?include=author` to the URL to side load the author data as well `http://localhost:3000/articles/1?include=author`:
 
-    TODO: image of output
+!["Articles JSON output"](preso/img/json3.png)
 
-There's lots more you can do to restrict access to resources, filter the data and so on, so I recommend you read the primary README file on github as it's loaded with great info. We've got a basic API to do CRUD operations with Ember, though, so let's create our Ember app.
+There's lots more you can do to restrict access to resources, filter the data, etc., so I recommend you read the [primary README file on GitHub](https://github.com/cerebris/jsonapi-resources/blob/master/README.md) as it's loaded with great info. We've got a basic API to do CRUD operations with Ember, though, so let's create our Ember app.
 
 
 ## Ember.js
@@ -199,7 +199,7 @@ Ember CLI is currently locked to Ember 1.13.x (this is going to change very shor
 
 If bower asks you to select a version, choose the one that persists the 2.1.0 version, like so:
 
-    TODO: IMAGE
+!["Resolving Ember"](preso/img/resolving.png)
 
 Great, now you're running Ember 2.0 when you run `ember serve`.
 
@@ -219,6 +219,7 @@ First let's generate a view to display a list of articles in:
 Edit the generated route in *app/routes/articles.js*:
 
     import Ember from 'ember';
+
     export default Ember.Route.extend({
       model() {
         return this.store.findAll('article');
@@ -238,13 +239,13 @@ Finally, let's start the Ember server up and proxy all requests to the Rails app
 
     $ ember serve --proxy=http://localhost:3000
 
-Hitting http://localhost:4200/articles should show a list of articles with authors now. 
+Hitting [http://localhost:4200/articles](http://localhost:4200/articles) should show a list of articles with authors now. 
 
-    TODO: IMAGE
+!["Ember app"](preso/img/ember.png)
 
 You may find that the author names do not display, if so, check your console output. It probably has to do with a Cross-Origin Resource Sharing (CORS) issue. To solve it, shut down the rails server and follow along with the next section. 
 
-### CORS
+## CORS
 
 We'll add the [rack-cors](https://github.com/cyu/rack-cors) gem to handle the CORS configuration for us:
 
@@ -265,3 +266,30 @@ Add the following snippet to your *config/application.rb*:
     end
 
 Great, now start up the Rails server again and head back to your Ember app. The articles should be loading the author now as well. There may be some other warnings in the console that you'll have to resolve for a production app, but for our demo, we can safely ignore those for now.
+
+## Pagination data
+
+### Setting up Rails
+
+jsonapi-resources makes paginating data a snap. No additional gems required. We can add an initializer to configure pagination like so (the default is `:none` pagination):
+
+    # config/initializers/jsonapi_resources.rb
+    JSONAPI.configure do |config|
+      # built in paginators are :none, :offset, :paged
+      config.default_paginator = :paged
+
+      config.default_page_size = 2
+      config.maximum_page_size = 20
+    end
+
+Restart Rails and navigate to <a href="http://localhost:3000/articles">http://localhost:3000/articles</a> and you'll only see 2 items instead of 5. Add <a href="http://localhost:3000/articles?page=2">?page=2</a> to the URL to see the next set of articles.
+
+The URL params for pagination are not well documentated at this point. You can either use an integer like `page=2` or you can break down into parts with `page[number]=1&page[size]=1`. Number is the page number you want and size being your "per page" value.
+
+### Ember pagination is hard.
+
+Paginating on the Ember side gets a bit more complex. You'll need to use extracted meta data from the JSON response to tell which page you're on. jsonapi-resources [doesn't handle meta](https://github.com/cerebris/jsonapi-resources/issues/89) out of the box quite yet, but there are [solutions that involve manual serializtion](https://github.com/cerebris/jsonapi-resources/issues/89#issuecomment-101740062) that seem reasonable. 
+
+Using this method, you could then drop in the ember-cli-pagination addon to get frontend pagination for free. 
+
+Another article will probably be appropriate down the road. 
